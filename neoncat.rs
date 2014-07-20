@@ -20,13 +20,23 @@ fn main() {
 
   if prog_opts.listen {
     match tcp_listen(prog_opts.ip, prog_opts.port) {
-      Some(m) => { in_to_out(m, io::stdio::stdout()); }
+      Some(m) => {
+        let mut m_read = m.clone();
+        let mut m_write = m.clone();
+        spawn(proc() in_to_out(m_read, io::stdio::stdout_raw()));
+        spawn(proc() in_to_out(io::stdio::stdin_raw(), m_write));
+      }
       None => { return; }
     }
 
   } else {
     match tcp_connect(prog_opts.ip, prog_opts.port) {
-      Some(m) => { in_to_out(io::stdio::stdin(), m); }
+      Some(m) => {
+        let mut m_read = m.clone();
+        let mut m_write = m.clone();
+        spawn(proc() in_to_out(io::stdio::stdin_raw(), m_write));
+        spawn(proc() in_to_out(m_read, io::stdio::stdout_raw()));
+      }
       None => { return; }
     }
   }
@@ -120,9 +130,11 @@ fn tcp_connect( ip: &str, port: u16 ) -> Option<io::net::tcp::TcpStream> {
 }
 
 fn in_to_out<A: io::Reader, B: io::Writer>( input: A, output: B ) {
-  let mut input_buffer = io::BufferedReader::new(input);
-  let mut output_buffer = io::BufferedWriter::new(output);
-  let mut buf = [0, ..512];
+  // let mut input_buffer = io::BufferedReader::new(input);
+  // let mut output_buffer = io::BufferedWriter::new(output);
+  let mut input_buffer = input;
+  let mut output_buffer = output;
+  let mut buf = [0, ..1];
   let mut count: uint;
 
   loop{
