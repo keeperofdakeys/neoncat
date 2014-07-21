@@ -1,0 +1,1 @@
+A small netcat clone written in Rust. Since it splits into two tasks for reading/writing from the TcpStream, EOF may need to be given for it to properly quit after a connection dies. It also has bad performance because of no buffering, however due to the lack of non-blocking IO in rust, content would get stuck inside buffers instead.
