@@ -6,7 +6,6 @@ use std::option::Option;
 use getopts::{optflag,getopts};
 use std::io::{Acceptor, Listener};
 
-
 fn main() {
   let prog_opts = match parse_args() {
     Some(t) => { t }
@@ -19,10 +18,10 @@ fn main() {
   }
 
   if prog_opts.listen {
-    match tcp_listen(prog_opts.ip, prog_opts.port) {
+    match tcp_listen(prog_opts.ip.as_slice(), prog_opts.port) {
       Some(m) => {
-        let mut m_read = m.clone();
-        let mut m_write = m.clone();
+        let m_read = io::BufferedReader::new(m.clone());
+        let m_write = io::BufferedWriter::new(m.clone());
         spawn(proc() in_to_out(m_read, io::stdio::stdout_raw()));
         spawn(proc() in_to_out(io::stdio::stdin_raw(), m_write));
       }
@@ -30,10 +29,10 @@ fn main() {
     }
 
   } else {
-    match tcp_connect(prog_opts.ip, prog_opts.port) {
+    match tcp_connect(prog_opts.ip.as_slice(), prog_opts.port) {
       Some(m) => {
-        let mut m_read = m.clone();
-        let mut m_write = m.clone();
+        let m_read = io::BufferedReader::new(m.clone());
+        let m_write = io::BufferedWriter::new(m.clone());
         spawn(proc() in_to_out(io::stdio::stdin_raw(), m_write));
         spawn(proc() in_to_out(m_read, io::stdio::stdout_raw()));
       }
@@ -42,8 +41,8 @@ fn main() {
   }
 }
 
-struct ProgOpts<'a> {
-  ip: &'a str,
+struct ProgOpts {
+  ip: String,
   port: u16,
   listen: bool,
   verbose: bool,
@@ -52,8 +51,8 @@ struct ProgOpts<'a> {
 
 fn parse_args() -> Option<ProgOpts> {
   let mut prog_opts = ProgOpts {
-    ip: "127.0.0.1",
-    port: 8787,
+    ip: "127.0.0.1".into_string(),
+    port: 0,
     listen: false,
     verbose: false,
     help: false
@@ -69,7 +68,7 @@ fn parse_args() -> Option<ProgOpts> {
     Err(f) => {
       print_error(f, 1);
       return None;
-      }
+    }
   };
 
   if matches.opt_present("h") {
@@ -80,6 +79,36 @@ fn parse_args() -> Option<ProgOpts> {
   }
   if matches.opt_present("v") {
     prog_opts.verbose = true;
+  }
+  
+  match matches.free.len() {
+    1 => {
+      if !prog_opts.listen {
+        print_error("Not enough arguments", 1);
+        return None;
+      }
+      prog_opts.port = match from_str::<u16>(matches.free[0].as_slice()) {
+        Some(a) => { a }
+        None => {
+          print_error("Port isn't a number.", 1);
+          return None;
+        }
+      };
+    }
+    2 => {
+      prog_opts.ip = matches.free[0].clone();
+      prog_opts.port = match from_str::<u16>(matches.free[1].as_slice()) {
+        Some(a) => { a }
+        None => {
+          print_error("Port isn't a number.", 1);
+          return None;
+        }
+      };
+    }
+    _ => {
+      print_error("Too many arguments.", 1);
+      return None;
+    }
   }
   Some(prog_opts)
 }
