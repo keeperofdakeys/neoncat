@@ -114,7 +114,7 @@ fn parse_args() -> Option<ProgOpts> {
 }
 
 fn print_error<A: std::fmt::Show>( error: A, errno: int ) {
-  writeln!(io::stdio::stderr(), "{}", error);
+  let _ = writeln!(io::stdio::stderr(), "{}", error);
   os::set_exit_status(errno);
 }
 
@@ -163,11 +163,11 @@ fn in_to_out<A: io::Reader, B: io::Writer>( input: A, output: B ) {
   // let mut output_buffer = io::BufferedWriter::new(output);
   let mut input_buffer = input;
   let mut output_buffer = output;
-  let mut buf = [0, ..512];
+  let mut buf = box () ([0, ..512]);
   let mut count: uint;
 
   loop{
-    count = match input_buffer.read(buf) {
+    count = match input_buffer.read(*buf) {
       Ok(a) => {a}
       Err(e) => {
         match e.kind {
