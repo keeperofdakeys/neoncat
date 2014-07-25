@@ -3,17 +3,24 @@ use std::io;
 use std::os::args;
 use std::os;
 use std::option::Option;
-use getopts::{optflag,getopts};
+use getopts::{OptGroup, optflag,getopts,usage,short_usage};
 use std::io::{Acceptor, Listener};
 
 fn main() {
-  let prog_opts = match parse_args() {
+  let args = os::args();
+  let opts = [
+    optflag("l","listen","Listen for a tcp connection instead of connecting."),
+    optflag("h","help","Print help."),
+    optflag("v","verbose","Print debug output to stderr (currently does nothing).")
+  ];
+
+  let prog_opts = match parse_args(args, opts) {
     Some(t) => { t }
     None => { return; }
   };
 
   if prog_opts.help {
-    print_help();
+    print_help(opts);
     return;
   }
 
@@ -49,7 +56,7 @@ struct ProgOpts {
   help: bool
 }
 
-fn parse_args() -> Option<ProgOpts> {
+fn parse_args(args: Vec<String>, opts: &[OptGroup]) -> Option<ProgOpts> {
   let mut prog_opts = ProgOpts {
     ip: "127.0.0.1".into_string(),
     port: 0,
@@ -57,12 +64,6 @@ fn parse_args() -> Option<ProgOpts> {
     verbose: false,
     help: false
   };
-  let args = os::args();
-  let opts = [
-    optflag("l","listen","Listen for a connection on ip and port instead of connecting"),
-    optflag("h","help","Print help"),
-    optflag("v","verbose","Print debug output to stderr")
-  ];
   let matches = match getopts(args.tail(), opts) {
     Ok(m) => { m }
     Err(f) => {
@@ -80,6 +81,7 @@ fn parse_args() -> Option<ProgOpts> {
   if matches.opt_present("v") {
     prog_opts.verbose = true;
   }
+  
   
   match matches.free.len() {
     1 => {
@@ -119,9 +121,12 @@ fn print_error<A: std::fmt::Show>( error: A, errno: int ) {
 }
 
 
-fn print_help() {
-  println!("HELP!");
-  println!("SOMEBODY HELP ME, HELP!");
+fn print_help(opts: &[OptGroup]) {
+  let mut stderr = io::stdio::stderr();
+  let usage_str = "Usage:
+neoncat [options] ip port
+neoncat -l [options] [ip] port";
+  let _ = writeln!(stderr, "{}", usage(usage_str, opts));
 }
 
 fn tcp_listen( ip: &str, port: u16 ) -> Option<io::net::tcp::TcpStream> {
@@ -152,18 +157,16 @@ fn tcp_connect( ip: &str, port: u16 ) -> Option<io::net::tcp::TcpStream> {
   match io::net::tcp::TcpStream::connect(ip, port) {
     Ok(m) => { Some(m) }
     Err(e) => {
-      print_error(e.desc, 3);
+      print_error(e, 3);
       return None;
     }
   }
 }
 
 fn in_to_out<A: io::Reader, B: io::Writer>( input: A, output: B ) {
-  // let mut input_buffer = io::BufferedReader::new(input);
-  // let mut output_buffer = io::BufferedWriter::new(output);
   let mut input_buffer = input;
   let mut output_buffer = output;
-  let mut buf = box () ([0, ..1024]);
+  let mut buf = box () ([0, ..1024*32]);
   let mut count: uint;
 
   loop{
