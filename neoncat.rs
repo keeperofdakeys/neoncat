@@ -20,7 +20,7 @@ fn main() {
   if prog_opts.listen {
     match tcp_listen(prog_opts.ip.as_slice(), prog_opts.port) {
       Some(m) => {
-        let m_read = io::BufferedReader::new(m.clone());
+        let m_read = m.clone();
         let m_write = m.clone();
         spawn(proc() in_to_out(m_read, io::stdio::stdout_raw()));
         spawn(proc() in_to_out(io::stdio::stdin_raw(), m_write));
@@ -31,7 +31,7 @@ fn main() {
   } else {
     match tcp_connect(prog_opts.ip.as_slice(), prog_opts.port) {
       Some(m) => {
-        let m_read = io::BufferedReader::new(m.clone());
+        let m_read = m.clone();
         let m_write = m.clone();
         spawn(proc() in_to_out(io::stdio::stdin_raw(), m_write));
         spawn(proc() in_to_out(m_read, io::stdio::stdout_raw()));
@@ -163,7 +163,7 @@ fn in_to_out<A: io::Reader, B: io::Writer>( input: A, output: B ) {
   // let mut output_buffer = io::BufferedWriter::new(output);
   let mut input_buffer = input;
   let mut output_buffer = output;
-  let mut buf = box () ([0, ..512]);
+  let mut buf = box () ([0, ..1024]);
   let mut count: uint;
 
   loop{
