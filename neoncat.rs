@@ -9,7 +9,7 @@ use std::io::{Acceptor, Listener};
 fn main() {
   let args = os::args();
   let opts = [
-    optflag("l","listen","Listen for a tcp connection instead of connecting."),
+    optflag("l","listen","Listen for a tcp connection instead of connecting. If specified, bind to ip."),
     optflag("h","help","Print help."),
     optflag("v","verbose","Print debug output to stderr (currently does nothing).")
   ];
@@ -18,11 +18,6 @@ fn main() {
     Some(t) => { t }
     None => { return; }
   };
-
-  if prog_opts.help {
-    print_help(opts);
-    return;
-  }
 
   if prog_opts.listen {
     match tcp_listen(prog_opts.ip.as_slice(), prog_opts.port) {
@@ -53,7 +48,6 @@ struct ProgOpts {
   port: u16,
   listen: bool,
   verbose: bool,
-  help: bool
 }
 
 fn parse_args(args: Vec<String>, opts: &[OptGroup]) -> Option<ProgOpts> {
@@ -62,7 +56,6 @@ fn parse_args(args: Vec<String>, opts: &[OptGroup]) -> Option<ProgOpts> {
     port: 0,
     listen: false,
     verbose: false,
-    help: false
   };
   let matches = match getopts(args.tail(), opts) {
     Ok(m) => { m }
@@ -73,7 +66,8 @@ fn parse_args(args: Vec<String>, opts: &[OptGroup]) -> Option<ProgOpts> {
   };
 
   if matches.opt_present("h") {
-    prog_opts.help = true;
+    print_help(opts);
+    return None;
   }
   if matches.opt_present("l") {
     prog_opts.listen = true;
@@ -106,6 +100,10 @@ fn parse_args(args: Vec<String>, opts: &[OptGroup]) -> Option<ProgOpts> {
           return None;
         }
       };
+    }
+    0 => {
+      print_error("Not enough arguments.", 1);
+      return None;
     }
     _ => {
       print_error("Too many arguments.", 1);
