@@ -170,14 +170,12 @@ fn in_to_out<A: io::Reader, B: io::Writer>( input: A, output: B ) {
   loop{
     count = match input_buffer.read(*buf) {
       Ok(a) => {a}
+      Err(io::IoError{ kind: io::EndOfFile, .. }) => {
+        return;
+      }
       Err(e) => {
-        match e.kind {
-          io::EndOfFile => { return; }
-          _ => {
-            print_error(e, 5);
-            return;
-          }
-        }
+        print_error(e, 5);
+        return;
       }
     };
 
